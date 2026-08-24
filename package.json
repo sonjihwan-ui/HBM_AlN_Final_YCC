@@ -1,0 +1,12 @@
+{
+  "name": "hbm-aln-design-optimization-final",
+  "version": "11.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'Static ES-module build: no bundling required'",
+    "start": "node server.js",
+    "test": "node tests/selftest.mjs && node tests/doe_selftest.mjs && node tests/v6_selftest.mjs && node tests/final_selftest.mjs && node tests/architecture_selftest.mjs"
+  },
+  "dependencies": {}
+}

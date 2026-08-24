@@ -1,0 +1,42 @@
+{
+  "version": "final-11.0",
+  "locked_aln": {
+    "depth_um": 1.0,
+    "rib_width_um": 2.0,
+    "youngs_modulus_gpa": 300,
+    "thermal_conductivity_w_mk": 200,
+    "nominal_residual_stress_mpa_tensile": 400,
+    "residual_sensitivity_mpa": [300, 400, 500],
+    "universal_tsv_collar_od_um": 6.0
+  },
+  "thermal_architecture_benchmarks": {
+    "micro_bump_underfill_Rarea_m2K_W": 4.2e-6,
+    "hybrid_bonding_Rarea_m2K_W": 1.2e-6,
+    "real_hbm_sanity_reference_reduction_pct": 22.8
+  },
+  "full_smoke_run": {
+    "winner": "X-braced reinforcement grid + Full-die continuation",
+    "tsv_y_mm": -1.0,
+    "actual_aln_vol_pct": 0.3268042441,
+    "recommended_24hi_layers": [1, 2, 3, 4, 5],
+    "recommended_24hi_modified_fraction_pct": 20.8333333333,
+    "24hi_screen_grid15": {
+      "micro_bump_underfill_tmax_c": 158.7754629462,
+      "hybrid_bonding_tmax_c": 138.3718416047,
+      "hybrid_plus_aln_tmax_c": 138.3701461418,
+      "micro_to_hcb_delta_k": 20.4036213414,
+      "system_effective_rth_reduction_pct": 17.9332351749,
+      "aln_incremental_delta_k": 0.0016954630,
+      "max_energy_error_pct": 0.0187398645
+    },
+    "24hi_architecture_grid21": {
+      "micro_bump_underfill_tmax_c": 158.2283268917,
+      "hybrid_bonding_tmax_c": 137.5808629451,
+      "hybrid_plus_aln_tmax_c": 137.5796896799,
+      "micro_to_hcb_delta_k": 20.6474639465,
+      "system_effective_rth_reduction_pct": 18.2352459966,
+      "aln_incremental_delta_k": 0.0011732652,
+      "max_energy_error_pct": 0.0196137782
+    }
+  }
+}

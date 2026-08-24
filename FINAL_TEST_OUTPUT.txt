@@ -1,0 +1,80 @@
+
+> hbm-aln-design-optimization-final@11.0.0 test
+> node tests/selftest.mjs && node tests/doe_selftest.mjs && node tests/v6_selftest.mjs && node tests/final_selftest.mjs && node tests/architecture_selftest.mjs
+
+PASS  32 µm total thickness bookkeeping gives 28.7 µm Si body
+PASS  Backside and AlN reference temperatures are hard-clamped at 200 °C
+PASS  Front Cu fraction is wired into homogenized material properties
+PASS  Constant-AlN-volume topology generator conserves projected target area
+PASS  Primary mapped mechanics returns finite warpage and a no-AlN comparator
+PASS  Front Cu fraction changes physics-generated mapped mechanics
+PASS  TSV Y-position is mechanically active in the mapped Ritz model
+PASS  TSV shape is mechanically active while total TSV area stays constant
+PASS  Universal TSV-collar diameter is thermally active
+PASS  Every occupied TSV receives a full-circumference collar through the AlN-depth segment
+PASS  Universal collars consume the same constant AlN volume budget as ribs
+PASS  Sensitivity process mode locks AlN depth to 1 µm regardless of attempted override
+PASS  Sensitivity process rule locks rib width = 2 µm and backside-adjacent placement
+PASS  Single-die thermal solve conserves requested power
+PASS  Topology selection changes at least one mechanical or thermal result
+PASS  Stack mechanical projection is finite and stack-count dependent
+PASS  Stack thermal projection increases thermal load with stack count
+PASS  Stack thermal solve conserves total core-die power
+PASS  All TSV shape modes preserve 13 mm² total TSV area
+PASS  Replacement and additive AlN embedding modes are not aliases
+PASS  AlN residual-stress sign is mechanically active
+PASS  AlN z-position is mechanically active
+PASS  1-die calibrated stack baseline reproduces W0
+PASS  UI references only DOM ids that exist in index.html
+PASS  Default 12-Hi / 30 W stack thermal case is calibrated near the ~99 °C HCB-benchmark reference scale
+PASS  V1/V2/V3 pattern families are distinct and use the same target AlN volume accounting
+PASS  TSV SiO2 liner thickness changes baseline Cu lateral participation
+PASS  V2 Bank-extension modes include a distinct full-pattern continuation case
+
+Self-test summary: 28/28 passed.
+PASS  DOE list parser handles comma/space values and clamps
+PASS  Higher/lower normalization is monotonic
+PASS  Pareto detector keeps only non-dominated points
+PASS  Primary score respects warpage-heavy weights
+PASS  Default design-optimization settings include 16/20/24-Hi high-stack check
+PASS  Mini design-optimization pipeline completes all five stages and returns a final ranked candidate
+PASS  DOE ranking forcibly uses the process width = 2 × depth rule even if the base UI is manual-width mode
+PASS  Residual stress is a sensitivity dimension, not embedded in Stage-2 design identity
+PASS  Robustness summary reports Top-1/Top-2/benefit frequencies in 0–100%
+PASS  Final candidate explicitly labels whether the primary warpage criterion is beneficial
+PASS  DOE result is JSON serializable for export/review
+PASS  All app DOM references exist in index.html, including single-quoted $ calls
+PASS  Physics-generated mode disables redundant W0 robustness dimension
+PASS  Pipeline cancellation hook stops DOE cleanly
+
+Die-design optimization self-test summary: 14/14 passed.
+PASS  V6 layer convention: bottom-25 on 16-Hi selects Layers 1-4
+PASS  Top-25 on 16-Hi selects Layers 13-16
+PASS  Masked all-baseline/all-modified mechanical exactly match legacy projection endpoints
+PASS  Masked all-baseline/all-modified thermal match legacy projection endpoints
+PASS  Selective placement produces finite final bow/thermal and layer temperature profile
+PASS  Cumulative stacking history explicitly runs Layer 1 -> N and tracks modified additions
+PASS  Benefit capture returns 0% at baseline and 100% at all-modified when full benefit is positive
+PASS  One-layer sensitivity scans every layer and assigns finite combined scores
+PASS  Preset comparison includes baseline/custom/all-modified and preserves requested custom mask
+PASS  Priority deployment plan evaluates all prefix counts and reaches the all-modified endpoint
+PASS  Selective thermal energy balance remains within 1%
+PASS  V6 supports 16/20/24-Hi custom masks
+PASS  V6 results are JSON serializable
+
+Selective-deployment self-test summary: 13/13 passed.
+PASS  Final default uses +400 MPa tensile AlN residual stress and no aggregate front/back residual stress
+PASS  Design optimization uses 300/400/500 MPa process-variation sweep
+PASS  Human-facing topology names do not expose V/T internal codes
+PASS  Cost/performance placement tradeoff can recommend a low-count mask without requiring all-modified bow benefit
+PASS  Mini integrated final study runs die optimization then exact selective-stack verification
+PASS  Final UI removes visible front/back residual inputs and contains complete-study controls/results
+PASS  Final UI exposes universal-collar geometry and removes the obsolete non-contact-gap control
+
+Final integrated self-test summary: 7/7 passed.
+PASS  Literature architecture benchmark constants are locked to 4.2/1.2 mm2K/W
+PASS  Hybrid bonding benchmark is thermally better than micro-bump + underfill under identical stack boundary conditions
+PASS  AlN increment is separated from HCB architecture benefit and energy is conserved
+PASS  Final UI contains the 3-way interconnect thermal architecture panel and architecture verification control
+
+Thermal architecture self-test summary: 4/4 passed.

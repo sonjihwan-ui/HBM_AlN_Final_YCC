@@ -1,0 +1,30 @@
+# V5 -> V5.1 Changelog
+
+- Fixed total-thickness interpretation: 32 µm total, not 32 µm Si + skins.
+- Connected front Cu fraction to actual homogenized E/CTE/k.
+- Replaced dead TSV global-mechanics behavior with local TSV laminate + quartic Ritz mapping.
+- Added TSV reference/compact/split/aspect shape maps with constant 13 mm² area.
+- Added TSV X/Y position shift to actual mechanical/thermal maps.
+- Added prior AlN pattern families:
+  - V1 Orthogonal square grid
+  - V2 X-braced grid
+  - V3 Directed parallel lines
+- Separated Bank treatment from pattern family:
+  - T0 TSV-region only
+  - T1 Bank-only X ribs
+  - T2 Bank-only Y ribs
+  - T3 Bank-only X/Y ribs
+  - T4 full continuation of selected pattern
+- Added same-target-AlN-volume auto width across pattern/topology cases.
+- Added conservative AlN replacement model and additive upper-bound mode.
+- Added AlN CTE mismatch, residual stress, z-position, process/reference temperature.
+- Hard-capped backside and AlN reference temperature at 200 °C.
+- Added TSV SiO2 liner blocking and AlN bypass thermal model.
+- Added TSV–AlN alignment and non-contact gap.
+- Added single-die thermal energy-balance check.
+- Added base-die 6 W source injection for stack thermal projection.
+- Added 4/8/12/16-Hi mechanical + thermal projection.
+- Added mechanical, single-die thermal, and stack thermal convergence tools.
+- Added pattern / Bank-extension / TSV position / TSV shape / TSV liner DOE.
+- Added CSV export.
+- Added 24 automated implementation tests and an external-AI audit prompt.

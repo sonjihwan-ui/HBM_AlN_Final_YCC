@@ -1,0 +1,623 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>HBM AlN Final Design Optimization Simulator</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+<header class="topbar">
+  <div>
+    <div class="eyebrow">HBM CORE-DIE · POST-SINGULATION / PRE-STACK</div>
+    <h1>AlN-Reinforced HBM Core-Die Final Design Optimizer</h1>
+    <p>Baseline hybrid-bonding die → AlN reinforcement optimization → process-variation robustness → selective layer deployment → cost/performance trade-off</p>
+  </div>
+  <div class="statusTag">Reduced-order research surrogate</div>
+</header>
+
+<main class="shell">
+<aside class="controls">
+  <section class="panel">
+    <h2>1. Core-die geometry</h2>
+    <div class="two">
+      <label>Total die thickness [µm]<input id="totalDieT" type="number" value="32" step="0.1"></label>
+      <label>Core die X=Y [mm]<input id="coreSize" type="number" value="10.6" step="0.1"></label>
+    </div>
+    <div class="two">
+      <label>Front skin [µm]<input id="frontT" type="number" value="2.6" step="0.1"></label>
+      <label>Back skin [µm]<input id="backT" type="number" value="0.7" step="0.1"></label>
+    </div>
+    <div class="derived">Si body = <b id="siBodyOut">28.7 µm</b> (auto: total − front − back)</div>
+  </section>
+
+  <section class="panel">
+    <h2>2. TSV map</h2>
+    <div class="two">
+      <label>Reference X [mm]<input id="tsvW" type="number" value="10" step="0.1"></label>
+      <label>Reference Y [mm]<input id="tsvH" type="number" value="1.3" step="0.1"></label>
+    </div>
+    <label>Shape
+      <select id="tsvShape">
+        <option value="reference">Reference rectangle · 10×1.3</option>
+        <option value="split">Split-2 · same total area</option>
+        <option value="compact">Compact square · same total area</option>
+        <option value="aspect">Area-preserving aspect ratio</option>
+      </select>
+    </label>
+    <div class="two">
+      <label>Aspect ratio X/Y<input id="tsvAspect" type="number" value="7.6923" step="0.2"></label>
+      <label>Split gap [mm]<input id="tsvSplitGap" type="number" value="0.3" step="0.1"></label>
+    </div>
+    <div class="two">
+      <label>Shift X [mm]<input id="tsvShiftX" type="number" value="0" step="0.1"></label>
+      <label>Shift Y [mm]<input id="tsvShiftY" type="number" value="0" step="0.1"></label>
+    </div>
+    <div class="two">
+      <label>Pitch [µm]<input id="tsvPitchUm" type="number" value="20" step="1"></label>
+      <label>Conductive TSV diameter [µm]<input id="tsvDiaUm" type="number" value="4.5" step="0.1"></label>
+    </div>
+    <label>TSV occupancy [%]<input id="tsvOccPct" type="range" min="0" max="50" value="20" step="1"><span class="value" data-for="tsvOccPct"></span></label>
+    <div class="two">
+      <label>SiO₂ liner thickness [µm]<input id="tsvLinerTUm" type="number" min="0.01" value="0.2" step="0.1"></label>
+      <label>SiO₂ liner k [W/mK]<input id="tsvLinerK" type="number" min="0.1" value="1.4" step="0.1"></label>
+    </div>
+    <div class="derived"><span id="tsvLatticeOut"></span></div>
+  </section>
+
+  <section class="panel">
+    <h2>3. Effective front/back stack</h2>
+    <label>Front Cu fraction [%]<input id="frontCuPct" type="range" min="0" max="50" step="1" value="25"><span class="value" data-for="frontCuPct"></span></label>
+    <div class="derived small" id="skinPropsOut"></div>
+    <input id="frontResidualMPa" type="hidden" value="0">
+    <input id="backResidualMPa" type="hidden" value="0">
+    <details>
+      <summary>Process-temperature references</summary>
+      <div class="two">
+        <label>Front process [°C]<input id="frontProcessC" type="number" min="25" max="500" value="400" step="10"></label>
+        <label>Back process [°C]<input id="backProcessC" type="number" min="25" max="200" value="180" step="5"></label>
+      </div>
+      <div class="two">
+        <label>TSV Cu reference [°C]<input id="tsvRefC" type="number" min="25" max="400" value="250" step="10"></label>
+        <label>Final / measurement [°C]<input id="finalC" type="number" value="25" step="1"></label>
+      </div>
+      <p class="note">No arbitrary aggregate front/back residual-stress value is applied. Baseline process-induced deformation is represented by the calibrated free-die warpage plus effective-stack CTE/process-temperature mismatch. Backside process temperature is limited to 200 °C.</p>
+    </details>
+  </section>
+
+  <section class="panel">
+    <h2>4. Pre-stack mechanical mode</h2>
+    <label>Mode<select id="mechMode">
+      <option value="calibrated">Literature-calibrated W₀ + mapped TSV deviation</option>
+      <option value="physics">Physics-generated 3-layer + mapped TSV</option>
+    </select></label>
+    <div id="calBox">
+      <label>Post-singulation W₀ [µm]<input id="w0Um" type="range" min="20" max="140" value="70" step="5"><span class="value" data-for="w0Um"></span></label>
+      <label>Sign<select id="warpSign"><option value="1">Concave (+)</option><option value="-1">Convex (−)</option></select></label>
+    </div>
+    <label>Mechanical mapping grid<select id="mechGrid"><option>31</option><option selected>41</option><option>61</option></select></label>
+  </section>
+
+  <section class="panel">
+    <h2>5. AlN reinforcement design</h2>
+    <label>Reinforcement pattern<select id="alnPattern">
+      <option value="V1" selected>Orthogonal grid · horizontal + vertical lines</option>
+      <option value="V2">X-braced grid · orthogonal + diagonal braces</option>
+      <option value="V3">Parallel lines · single preferred direction</option>
+    </select></label>
+    <label>Parallel-line direction (used only for Parallel lines)<select id="alnV3Direction"><option value="y" selected>Y direction · toward upper/lower bank</option><option value="x">X direction · left/right</option></select></label>
+    <label>Pattern coverage outside TSV zone<select id="alnTopology">
+      <option value="T0">TSV zone only</option>
+      <option value="T1">TSV zone + horizontal bank ribs</option>
+      <option value="T2">TSV zone + vertical bank ribs</option>
+      <option value="T3" selected>TSV zone + orthogonal bank ribs</option>
+      <option value="T4">Continue the selected pattern across the full die</option>
+    </select></label>
+    <div class="two">
+      <label>Connection stride<input id="alnStride" type="number" min="1" max="30" value="5" step="1"></label>
+      <label>Embedded AlN depth<div class="derived">1.0 µm · fixed sensitivity value</div></label>
+    </div>
+    <div class="two">
+      <label>In-plane rib width<div class="derived" id="processWidthOut">2.0 µm · fixed 2:1 width/depth rule</div></label>
+      <label>Vertical placement<div class="derived" id="processPlacementOut">Backside-adjacent · automatic</div></label>
+    </div>
+    <input id="alnTUm" type="hidden" value="1.0">
+    <input id="alnWidthMode" type="hidden" value="process">
+    <input id="alnWidthUm" type="hidden" value="2.0">
+    <input id="alnVolPct" type="hidden" value="0.3">
+    <input id="alnZ" type="hidden" value="0.01742">
+    <p class="note"><b>Locked final fabrication basis:</b> embedded AlN depth = <b>1.0 µm</b> and rib width = <b>2.0 µm</b>. These dimensions are not optimized. The cross-section is locked for the final proposal; actual AlN volume is reported for each layout. +400 MPa is retained as the nominal process-stress input, with +300/+400/+500 MPa used only for sensitivity.</p>
+    <input id="alnResidualMPa" type="hidden" value="400">
+    <div class="two">
+      <label>Nominal PVD AlN residual stress<div class="derived">+400 MPa tensile · fixed main condition</div></label>
+      <label>Residual-stress comparison<div class="derived">+300 / +400 / +500 MPa · sensitivity only</div></label>
+    </div>
+    <p class="note">The +400 MPa value is retained as the nominal process-stress input for this 1 µm / 2 µm geometry sensitivity comparison. +300 / +400 / +500 MPa is used only to compare stress sensitivity; this variant does not claim that +400 MPa was directly measured on a 1 µm patterned rib.</p>
+    <div class="materialBox">
+      <b>Locked material properties used by the solver</b>
+      <div class="two">
+        <div class="derived">AlN: E = 300 GPa · ν = 0.245 · CTE = 4.2 ppm/K</div>
+        <div class="derived">Thermal k: AlN = 200 W/mK · Si = 149 W/mK</div>
+      </div>
+    </div>
+    <div class="two">
+      <label>AlN reference T [°C]<input id="alnProcessC" type="number" min="25" max="200" value="180" step="5"></label>
+      <label>Embedding model<select id="alnEmbeddingMode"><option value="replacement">Replacement (conservative)</option><option value="additive">Additive upper-bound</option></select></label>
+    </div>
+    <div class="two">
+      <label>Offset X [TSV pitches]<input id="alnOffsetX" type="number" min="-2" max="2" value="0" step="0.25"></label>
+      <label>Offset Y [TSV pitches]<input id="alnOffsetY" type="number" min="-2" max="2" value="0" step="0.25"></label>
+    </div>
+    <div class="collarBox">
+      <b>TSV electrical-isolation node · universal 360° AlN collar</b>
+      <div class="two">
+        <label>Collar outer diameter [µm]<input id="tsvCollarOuterDiaUm" type="number" min="4.9" max="18" value="6.0" step="0.1"></label>
+        <label>Common liner-recess depth<div class="derived" id="collarRecessOut">1.0 µm · fixed to AlN depth</div></label>
+      </div>
+      <div class="derived small" id="collarDetailOut">Every occupied TSV receives an annular AlN collar through the recessed segment.</div>
+      <p class="note"><b>Process assumption used in the final model:</b> SiO₂ liner recess is not TSV-selective. The same AlN-depth segment is recessed around all occupied TSVs, then every TSV receives a full-circumference AlN collar. Ribs may connect to a collar or leave it isolated; below the AlN segment the original SiO₂ liner remains. The 4.5 µm TSV diameter is treated as an effective conductive Cu/barrier envelope because barrier thickness is not separately resolved.</p>
+    </div>
+    <input id="tsvAlnGapUm" type="hidden" value="0">
+  </section>
+
+  <section class="panel">
+    <h2>6. Operating thermal</h2>
+    <div class="two">
+      <label>Bank power / core [W]<input id="bankPowerW" type="number" value="1.5" step="0.1"></label>
+      <label>TSV-zone power / core [W]<input id="tsvPowerW" type="number" value="0.5" step="0.1"></label>
+    </div>
+    <div class="two">
+      <label>Ambient [°C]<input id="ambientC" type="number" value="45" step="1"></label>
+      <label>External Rth [K/W]<input id="externalRthKW" type="number" value="1.25" step="0.05"></label>
+    </div>
+    <label>Single-die thermal grid<select id="thermalGrid"><option>41</option><option selected>61</option><option>81</option></select></label>
+    <button id="runThermal" class="primary">Run single-die thermal</button>
+  </section>
+
+  <section class="panel">
+    <h2>7. Bonded-stack operating projection</h2>
+    <label>Current stack count<select id="stackCount"><option>4</option><option>8</option><option selected>12</option><option>16</option><option>20</option><option>24</option></select></label>
+    <label class="checkline"><input id="includeBasePower" type="checkbox" checked> Include base-die power injection in stack thermal</label>
+    <div class="two">
+      <label>Base PHY power [W]<input id="basePhyPowerW" type="number" value="4" step="0.5"></label>
+      <label>Base TSV power [W]<input id="baseTsvPowerW" type="number" value="2" step="0.5"></label>
+    </div>
+    <div class="two">
+      <label>Bond layer [µm]<input id="bondTUm" type="number" min="0" value="0.2" step="0.1"></label>
+      <label>Stack thermal grid<select id="stackGrid"><option>15</option><option>21</option><option selected>31</option></select></label>
+    </div>
+    <details>
+      <summary>Stack-interface surrogate</summary>
+      <div class="two">
+        <label>Bond E [GPa]<input id="bondE_GPa" type="number" value="70" step="5"></label>
+        <label>Bond CTE [ppm/K]<input id="bondCTE_ppm" type="number" value="3" step="0.5"></label>
+      </div>
+      <div class="two">
+        <label>Bond k [W/mK] · fallback if R″=0<input id="bondK" type="number" value="2" step="0.2"></label>
+        <label>Effective HCB inter-die R″ [m²K/W]<input id="bondRarea" type="number" value="0.0000012" step="1e-7"></label>
+      </div>
+      <label>Die orientation<select id="stackOrientation"><option value="same">Same orientation</option><option value="alternating">Alternating mirror sensitivity</option></select></label>
+    </details>
+    <p class="note">Default stack thermal uses the literature-benchmark HCB equivalent inter-die resistance R″ = 1.2 mm²·K/W. The bond-layer thickness remains a separate mechanical/height surrogate.</p>
+    <button id="runStack" class="primary">Run current stack projection</button>
+    <button id="runStackSweep">Sweep 4 / 8 / 12 / 16 / 20 / 24-Hi</button>
+    <p class="note">Stack results are a secondary post-bond surrogate. The primary research target remains the individual free die immediately before stacking/tacking.</p>
+  </section>
+
+  <section class="panel">
+    <h2>8. Manual comparisons / numerical verification</h2>
+    <button id="runPatternDOE">Compare reinforcement pattern families</button>
+    <button id="runTopoDOE">Compare TSV-only / bank-extension layouts</button>
+    <button id="runPosDOE">TSV Y-position DOE −1 / 0 / +1 mm</button>
+    <button id="runShapeDOE">TSV shape DOE</button>
+    <button id="runLinerDOE">TSV liner DOE 0.2 / 0.5 / 1.0 µm</button>
+    <button id="runMechConv">Mechanical convergence 31/41/61</button>
+    <button id="runConv">Single-die thermal convergence 41/61/81</button>
+    <button id="runStackConv">Stack thermal convergence 15/21/31</button>
+    <button id="downloadCsv">Download last table CSV</button>
+  </section>
+
+  <section class="panel doePanel">
+    <h2>9. Automated reinforced-die design optimization</h2>
+    <div class="doePolicy">Ranking uses the same <b>locked process cross-section</b> for every layout: 1.0 µm embedded depth and 2.0 µm rib width. The optimizer compares pattern/coverage/position while reporting actual AlN usage.</div>
+
+    <details open>
+      <summary>Geometry exploration settings</summary>
+      <div class="two">
+        <label>Pattern-screen keep Top K<input id="doeTopK1" type="number" min="3" max="10" value="5" step="1"></label>
+        <label>Refinement keep Top K<input id="doeTopK2" type="number" min="2" max="5" value="3" step="1"></label>
+      </div>
+      <input id="doeDepthValues" type="hidden" value="1">
+      <label>TSV Y-shift sweep [mm]<input id="doeYShiftValues" type="text" value="-1, 0, 1"></label>
+      <input id="doeResidualValues" type="hidden" value="300, 400, 500">
+      <div class="derived">Fixed sensitivity cross-section: depth 1.0 µm / width 2.0 µm</div>
+      <div class="derived">Residual-stress comparison: +300 / +400 / +500 MPa (nominal +400 MPa)</div>
+      <p class="note">Depth and width are locked. Residual stress remains a comparison/sensitivity axis only and is never selected as a favorable geometry variable.</p>
+    </details>
+
+    <details>
+      <summary>Robustness ranges</summary>
+      <label>Initial W₀ [µm]<input id="doeRobustW0" type="text" value="40, 70, 100"></label>
+      <label>TSV occupancy [%]<input id="doeRobustOcc" type="text" value="10, 20, 30"></label>
+      <label>SiO₂ liner [µm]<input id="doeRobustLiner" type="text" value="0.2, 0.5, 1.0"></label>
+      <input id="doeRobustResidual" type="hidden" value="300, 400, 500"><div class="derived">AlN residual-stress robustness: +300 / +400 / +500 MPa</div>
+    </details>
+
+    <details>
+      <summary>High-stack cross-check</summary>
+      <label>High-stack counts<input id="doeHighStacks" type="text" value="16, 20, 24"></label>
+      <div class="two">
+        <label>Screen mech grid<input id="doeMechGrid" type="number" min="15" max="41" value="21" step="2"></label>
+        <label>Screen thermal grid<input id="doeThermalGrid" type="number" min="21" max="61" value="25" step="2"></label>
+      </div>
+      <label>Screen stack grid<input id="doeStackGrid" type="number" min="9" max="21" value="11" step="2"></label>
+    </details>
+
+    <details open>
+      <summary>Primary ranking weights</summary>
+      <div class="two">
+        <label>Warpage [%]<input id="doeWeightWarpage" type="number" min="0" max="100" value="60" step="5"></label>
+        <label>Local deformation [%]<input id="doeWeightLocal" type="number" min="0" max="100" value="15" step="5"></label>
+      </div>
+      <div class="two">
+        <label>Single-die thermal [%]<input id="doeWeightThermal" type="number" min="0" max="100" value="15" step="5"></label>
+        <label>Robustness [%]<input id="doeWeightRobust" type="number" min="0" max="100" value="10" step="5"></label>
+      </div>
+      <div id="doeWeightSum" class="derived small">Weight sum = 100%</div>
+      <p class="note">Primary Score determines the final rank. 16/20/24-Hi Stack Score is used only as a tie-breaker when Primary Scores are within 1 point.</p>
+    </details>
+
+    <details>
+      <summary>Feasibility / verification gates</summary>
+      <div class="two">
+        <label>Volume error max [%]<input id="doeGateVolume" type="number" min="0.1" max="10" value="1" step="0.1"></label>
+        <label>Energy error max [%]<input id="doeGateEnergy" type="number" min="0.1" max="10" value="1" step="0.1"></label>
+      </div>
+      <label>Convergence error max [%]<input id="doeGateConvergence" type="number" min="0.5" max="10" value="3" step="0.5"></label>
+      <label class="checkline"><input id="doeFinalVerification" type="checkbox" checked> Verify final candidate with 31/41/61 mechanics + 41/61/81 thermal</label>
+      <label class="checkline"><input id="doeStackVerification" type="checkbox"> Also run 24-Hi stack-grid convergence (slower)</label>
+    </details>
+
+    <div id="doeCaseEstimate" class="derived small">Sweep estimate will appear here.</div>
+    <button id="runV53Pipeline" class="primary">Run reinforced-die design optimization</button>
+    <button id="stopV53Pipeline" disabled>Stop current pipeline</button>
+    <button id="downloadDoeJson">Download design-optimization JSON</button>
+    <div class="progressBlock">
+      <div class="progressTrack"><div id="doeProgressBar" class="progressBar"></div></div>
+      <div id="doeProgressText" class="progressText">Not started</div>
+    </div>
+  </section>
+
+  <section class="panel v6Panel">
+    <h2>10. Selective stack deployment & cost/performance trade-off</h2>
+    <div class="doePolicy"><b>Layer 1 = bottom core die nearest the logic/base die.</b> Checked layers use the current AlN-modified core die; unchecked layers use the baseline core die.</div>
+    <div class="two">
+      <label>Stack count<select id="v6StackCount"><option>12</option><option selected>16</option><option>20</option><option>24</option></select></label>
+      <label>Placement preset<select id="v6Preset"><option value="custom">Custom</option><option value="all-baseline">All baseline</option><option value="all-modified">All modified</option><option value="bottom-25">Bottom 25%</option><option value="bottom-50">Bottom 50%</option><option value="top-25">Top 25%</option><option value="top-50">Top 50%</option><option value="center-25">Center 25%</option><option value="center-50">Center 50%</option><option value="alternating">Alternating 1,3,5…</option><option value="every-3rd">Every 3rd from bottom</option></select></label>
+    </div>
+    <button id="v6ApplyPreset">Apply preset</button>
+    <div class="v6LayerHeader"><span>TOP</span><span>Modified?</span></div>
+    <div id="v6LayerGrid" class="v6LayerGrid"></div>
+    <div class="v6BaseLabel">LOGIC / BASE DIE</div>
+    <div id="v6SelectionText" class="derived small">No layers selected.</div>
+
+    <details open>
+      <summary>Placement-analysis controls</summary>
+      <div class="two">
+        <label>Layer-scan thermal grid<select id="v6ScanGrid"><option selected>9</option><option>11</option><option>15</option></select></label>
+        <label>Capture targets [%]<input id="v6CaptureTargets" type="text" value="50, 75, 90"></label>
+      </div>
+      <div class="two">
+        <label>Mechanical placement weight [%]<input id="v6WeightMechanical" type="number" min="0" max="100" value="70" step="5"></label>
+        <label>Thermal placement weight [%]<input id="v6WeightThermal" type="number" min="0" max="100" value="30" step="5"></label>
+      </div>
+      <p class="note">Priority deployment is a sensitivity-based heuristic, not a global combinatorial optimum. Prefix thermal capture is estimated by additively accumulating the exact one-layer sensitivities for speed. The recommendation table is therefore a screening heuristic; apply a recommended layer mask and use Run selected placement for exact stack thermal verification with the normal stack grid.</p>
+    </details>
+
+    <button id="runV6Selected" class="primary">Run selected placement</button>
+    <button id="runV6Cumulative">Run 1→N cumulative bow</button>
+    <button id="runV6Sensitivity">Run one-layer sensitivity scan</button>
+    <button id="runV6Presets">Compare placement presets</button>
+    <button id="runV6Plan">Build minimum-replacement plan</button>
+    <button id="runV6Full" class="primary">Run complete placement analysis</button>
+    <button id="downloadV6Json">Download placement-analysis JSON</button>
+    <div class="progressBlock"><div class="progressTrack"><div id="v6ProgressBar" class="progressBar"></div></div><div id="v6ProgressText" class="progressText">Not started</div></div>
+  </section>
+
+  <section class="panel finalRunPanel">
+    <h2>11. Complete study · report-ready recommendation</h2>
+    <div class="doePolicy"><b>One-click final workflow:</b> optimize the reinforced die, verify baseline vs reinforced free-die response, then find a low-count selective placement for 16 / 20 / 24-Hi stacks. The one-click study uses a stable grid-15 direct stack verification and automatically loads the 24-Hi recommendation for an optional final grid-31 recheck. Modified-die fraction is used as a cost/process-complexity proxy; no monetary cost or yield % is predicted.</div>
+    <div class="two">
+      <label>Placement mechanical weight [%]<input id="finalWeightMechanical" type="number" min="0" max="100" value="70" step="5"></label>
+      <label>Placement thermal weight [%]<input id="finalWeightThermal" type="number" min="0" max="100" value="30" step="5"></label>
+    </div>
+    <div class="two">
+      <label>Recommendation policy<select id="finalRecommendationPolicy"><option value="knee">Pareto knee · geometric trade-off reference</option><option value="target" selected>Minimum reinforced-die count meeting retained-performance target</option></select></label>
+      <label>Retained-performance target [%] (used in target mode)<input id="finalTargetPct" type="number" min="50" max="100" value="75" step="5"></label>
+    </div>
+    <label>Fast placement-screen thermal grid<select id="finalScanGrid"><option selected>9</option><option>11</option><option>15</option></select></label>
+    <button id="runIntegratedStudy" class="primary">Run complete design + deployment study</button>
+    <button id="downloadIntegratedJson">Download complete-study JSON</button>
+    <div class="progressBlock"><div class="progressTrack"><div id="finalStudyProgressBar" class="progressBar"></div></div><div id="finalStudyProgressText" class="progressText">Not started</div></div>
+  </section>
+</aside>
+
+<section class="workspace">
+  <section class="hero card">
+    <div>
+      <div class="eyebrow">PRIMARY RESULT</div>
+      <h2>Post-singulation / pre-stack free-die warpage</h2>
+      <p id="caseSummary"></p>
+    </div>
+    <div id="validBadge" class="good">Ready</div>
+  </section>
+
+  <section class="card finalRecommendationCard">
+    <div class="sectionTitleRow"><div><div class="eyebrow">REPORT-READY FINAL RECOMMENDATION</div><h3 id="integratedHeadline">Run the complete study to generate the final recommendation.</h3></div><div id="integratedBadge" class="neutralBadge">Not run</div></div>
+    <div id="integratedDesignSummary" class="candidateMeta">Baseline hybrid-bonding die will be compared against the optimized AlN-reinforced die under the same model assumptions.</div>
+    <div class="metrics metrics5">
+      <div><span>Baseline free-die warpage</span><b id="integratedWBase">—</b></div>
+      <div><span>Optimized free-die warpage</span><b id="integratedWMod">—</b></div>
+      <div><span>Free-die improvement</span><b id="integratedWImprove">—</b></div>
+      <div><span>Nominal AlN residual stress</span><b id="integratedStress">+400 MPa</b></div>
+      <div><span>Optimized depth / width</span><b id="integratedWidth">—</b></div>
+    </div>
+    <div class="tableWrap"><table><thead id="integratedHead"></thead><tbody id="integratedBody"></tbody></table></div>
+    <div class="whyBox"><b>How to read this result</b><ul id="integratedNotes"><li>Final placement recommendations use modified-die fraction as a process-cost proxy and are exactly re-verified with the stack solver after screening.</li></ul></div>
+  </section>
+
+  <section class="card thermalArchitectureCard">
+    <div class="sectionTitleRow">
+      <div><div class="eyebrow">INTERCONNECT THERMAL ARCHITECTURE COMPARISON</div><h3>Conventional µ-bump + underfill vs Hybrid Bonding vs Proposed HCB + AlN</h3></div>
+      <div id="archBadge" class="neutralBadge">Runs with complete study</div>
+    </div>
+    <div class="metrics metrics3">
+      <div><span>µ-bump + underfill equivalent R″</span><b>4.2 mm²·K/W</b></div>
+      <div><span>Hybrid-bonding equivalent R″</span><b>1.2 mm²·K/W</b></div>
+      <div><span>Real-HBM sanity reference</span><b>HBI Rth ≈ 22.8% lower*</b></div>
+    </div>
+    <p class="note">The 4.2 and 1.2 mm²·K/W values are literature benchmark <b>area-normalized interconnect resistances</b>, not proprietary HBM4 values. The same die power, ambient, external cooling boundary and stack geometry are used for all three cases. The +22.8% reference is an external real-HBM trend check and is <b>not fitted</b> into this solver.</p>
+    <div class="tableWrap"><table><thead id="archHead"></thead><tbody id="archBody"></tbody></table></div>
+    <canvas id="archCanvas" width="920" height="300"></canvas>
+    <div class="two">
+      <button id="runArch24" class="primary">Run final 24-Hi architecture verification (grid 21)</button>
+      <div id="arch24Status" class="derived">Complete Study first; the recommended 24-Hi layer mask will be reused.</div>
+    </div>
+    <div class="whyBox"><b>Interpretation boundary</b><ul>
+      <li><b>µ-bump → HCB</b>: vertical interconnect-architecture thermal benefit.</li>
+      <li><b>HCB → HCB + AlN</b>: incremental thermal effect of the reinforcement itself.</li>
+      <li>The proposed AlN structure is primarily evaluated as a <b>warpage-control / HCB process-window enabler</b>; it is not required to be the dominant cooling mechanism.</li>
+    </ul></div>
+    <div class="tiny">* Literature sanity reference: SK hynix C2W HBI HBM study reported 22.8% lower thermal resistance than a micro-bump + molded-underfill structure at the same bump density. Benchmark interface values are from Oprins et al. as summarized in the HBM thermal review.</div>
+  </section>
+
+  <div class="cards2">
+    <section class="card"><h3>Base-die proxy map</h3><svg id="baseMap" viewBox="0 0 440 440"></svg><div class="legend"><span class="phy">PHY</span><span class="tsv">TSV</span><span class="da">DA</span></div></section>
+    <section class="card"><h3>Core-die TSV + AlN map</h3><svg id="coreMap" viewBox="0 0 440 440"></svg><div class="legend"><span class="bank">Bank</span><span class="tsv">TSV zone</span><span class="aln">AlN ribs</span><span>○ universal TSV collar (schematic sampling)</span></div></section>
+  </div>
+
+  <div class="metrics metrics5">
+    <div><span>Si body</span><b id="mSi">—</b></div>
+    <div><span>Estimated TSV count</span><b id="mTsv">—</b></div>
+    <div><span>AlN rib width</span><b id="mWidth">—</b></div>
+    <div><span>Universal TSV collars</span><b id="mCollar">—</b></div>
+    <div><span>Actual AlN vol%</span><b id="mVolActual">—</b></div>
+    <div><span>Width / depth rule</span><b id="mVolErr">2.00×</b></div>
+  </div>
+
+  <div class="cards2">
+    <section class="card">
+      <h3>Single free-die mechanics</h3>
+      <div class="rows">
+        <div><span>No-AlN warpage</span><b id="rW0">—</b></div>
+        <div><span>AlN warpage</span><b id="rW">—</b></div>
+        <div><span>Warpage reduction</span><b id="rRed">—</b></div>
+        <div><span>X centerline P–V</span><b id="rWx">—</b></div>
+        <div><span>Y centerline P–V</span><b id="rWy">—</b></div>
+        <div><span>κx / κy</span><b id="rK">—</b></div>
+        <div><span>Twist κxy</span><b id="rTwist">—</b></div>
+        <div><span>Mapped TSV local deviation</span><b id="rLocal">—</b></div>
+      </div>
+      <canvas id="warpCanvas" width="520" height="270"></canvas>
+      <div class="rows compactRows">
+        <div><span>X-section center vs edge</span><b id="rXSign">—</b></div>
+        <div><span>Y-section center vs edge</span><b id="rYSign">—</b></div>
+        <div><span>Interpretation guide</span><b id="rGuide">—</b></div>
+      </div>
+      <canvas id="sectionCanvas" width="520" height="220"></canvas>
+    </section>
+
+    <section class="card">
+      <h3>Single-die operating thermal</h3>
+      <div class="rows">
+        <div><span>No-AlN Tmax</span><b id="rT0">Run solver</b></div>
+        <div><span>AlN Tmax</span><b id="rT">—</b></div>
+        <div><span>Tmax improvement</span><b id="rTRed">—</b></div>
+        <div><span>Hotspot</span><b id="rHot">—</b></div>
+        <div><span>Rib-connected TSV collars</span><b id="rContact">—</b></div>
+        <div><span>Baseline full-height SiO₂ Cu participation</span><b id="rLiner">—</b></div>
+        <div><span>Pure AlN-collar segment participation</span><b id="rCollarEta">—</b></div>
+        <div><span>TSV height replaced by AlN collar</span><b id="rGap">—</b></div>
+        <div><span>Energy balance error</span><b id="rEnergy">—</b></div>
+      </div>
+      <canvas id="thermalCanvas" width="520" height="270"></canvas>
+    </section>
+  </div>
+
+  <section class="card stackCard">
+    <h3>Secondary stack-height projection</h3>
+    <div class="metrics stackMetrics">
+      <div><span>No-AlN stack bow</span><b id="sBow0">Run projection</b></div>
+      <div><span>AlN stack bow</span><b id="sBow">—</b></div>
+      <div><span>Bow reduction</span><b id="sBowRed">—</b></div>
+      <div><span>No-AlN stack Tmax</span><b id="sTmax0">—</b></div>
+      <div><span>AlN stack Tmax</span><b id="sTmax">—</b></div>
+      <div><span>Tmax improvement</span><b id="sTRed">—</b></div>
+      <div><span>Hottest core layer</span><b id="sHotLayer">—</b></div>
+      <div><span>Total modeled HBM power</span><b id="sPower">—</b></div>
+      <div><span>Core-only stack height</span><b id="sCoreHeight">—</b></div>
+      <div><span>With bond total height</span><b id="sTotalHeight">—</b></div>
+    </div>
+    <div class="cards2 stackVisuals">
+      <section>
+        <h4>Current stack-height schematic</h4>
+        <canvas id="stackSchematicCanvas" width="520" height="240"></canvas>
+      </section>
+      <section>
+        <h4>Height sweep trend</h4>
+        <canvas id="stackSweepCanvas" width="520" height="240"></canvas>
+      </section>
+    </div>
+    <p class="noteStrong">Do not interpret stack bow as the primary pre-bond metric. It is an explicitly separate bonded-stack surrogate used to see whether the selected AlN design retains benefit as the number of core dies increases.</p>
+  </section>
+
+  <section class="card">
+    <h3 id="tableTitle">DOE / stack sweep table</h3>
+    <div class="tableWrap"><table><thead id="tableHead"></thead><tbody id="tableBody"></tbody></table></div>
+  </section>
+
+
+  <section class="card v53Card">
+    <div class="sectionTitleRow">
+      <div><div class="eyebrow">DIE DESIGN OPTIMIZATION</div><h3>Fixed-process layout screening → residual-stress robustness → high-stack cross-check → candidate ranking</h3></div>
+      <div id="doeOverallBadge" class="neutralBadge">Not run</div>
+    </div>
+    <div class="pipelineSteps">
+      <div id="doeStage1" class="pipelineStep"><b>Reinforcement layout screening</b><span>15 fixed-cross-section candidates</span><small>3 patterns × 5 coverage layouts · depth 1 µm / width 2 µm fixed</small></div>
+      <div id="doeStage2" class="pipelineStep"><b>Position + residual-stress comparison</b><span>TSV-position scan</span><small>Top layouts × TSV Y shift × +300/+400/+500 MPa sensitivity</small></div>
+      <div id="doeStage3" class="pipelineStep"><b>Robustness</b><span>Input/process variation</span><small>W₀ × TSV occupancy × liner × AlN residual-stress variation</small></div>
+      <div id="doeStage4" class="pipelineStep"><b>High-stack check</b><span>16 / 20 / 24-Hi</span><small>secondary bonded-stack cross-check</small></div>
+      <div id="doeStage5" class="pipelineStep"><b>Candidate ranking</b><span>Primary objective + Pareto</span><small>pre-stack objective first; stack result only as tie-break</small></div>
+    </div>
+  </section>
+
+  <div class="cards2 v53Results">
+    <section class="card finalCandidateCard">
+      <div class="eyebrow">FINAL SCREENING CANDIDATE</div>
+      <h3 id="finalCandidateTitle">Run die-design optimization</h3>
+      <div id="finalCandidateMeta" class="candidateMeta"></div>
+      <div class="candidateScores">
+        <div><span>Primary Score</span><b id="finalPrimaryScore">—</b></div>
+        <div><span>Robust Top-2</span><b id="finalRobustScore">—</b></div>
+        <div><span>Stack Score</span><b id="finalStackScore">—</b></div>
+        <div><span>Pareto</span><b id="finalPareto">—</b></div>
+      </div>
+      <div class="rows finalRows">
+        <div><span>Mean pre-stack warpage reduction</span><b id="finalWarpageRed">—</b></div>
+        <div><span>Worst stress-case reduction</span><b id="finalWorstWarpage">—</b></div>
+        <div><span>Mean local deformation</span><b id="finalLocal">—</b></div>
+        <div><span>Single-die thermal improvement</span><b id="finalThermal">—</b></div>
+        <div><span>TSV Y position</span><b id="finalYShift">—</b></div>
+        <div><span>Embedded AlN depth</span><b id="finalZ">—</b></div>
+      </div>
+      <div class="whyBox"><b>Why selected?</b><ul id="finalWhyList"><li>Run the pipeline to generate an explanation.</li></ul></div>
+      <button id="applyFinalCandidate" disabled>Apply final candidate to main geometry controls</button>
+      <div id="finalVerifyBox" class="verificationBox">Final convergence verification: not run</div>
+    </section>
+
+    <section class="card">
+      <h3>Warpage–thermal Pareto map</h3>
+      <canvas id="paretoCanvas" width="520" height="360"></canvas>
+      <p class="note">Each point is a Stage-2 geometry candidate. Pareto points are not dominated in both warpage criterion and single-die thermal improvement. Final rank still prioritizes the pre-stack objective.</p>
+    </section>
+  </div>
+
+  <section class="card">
+    <h3>Optimized die-design ranking</h3>
+    <div class="tableWrap"><table><thead id="rankHead"></thead><tbody id="rankBody"></tbody></table></div>
+  </section>
+
+  <section class="card">
+    <h3>Parameter-sweep summary</h3>
+    <div class="sweepTabs">
+      <button class="sweepTab active" data-sweep="stage1">Pattern screening</button>
+      <button class="sweepTab" data-sweep="stage2">Geometry refinement</button>
+      <button class="sweepTab" data-sweep="stage3">Robustness</button>
+      <button class="sweepTab" data-sweep="stage4">High-stack check</button>
+    </div>
+    <div class="tableWrap"><table><thead id="sweepHead"></thead><tbody id="sweepBody"></tbody></table></div>
+  </section>
+  <section class="card v6Hero">
+    <div class="sectionTitleRow">
+      <div><div class="eyebrow">STACK-LEVEL SELECTIVE DEPLOYMENT</div><h3>Where and how many reinforced core dies should be used?</h3></div>
+      <div id="v6StatusBadge" class="neutralBadge">Not run</div>
+    </div>
+    <p class="noteStrong">This simulator does not predict manufacturing yield %. It evaluates a <b>cost/yield-oriented selective deployment strategy</b>: whether fewer modified core dies can retain stack-level bow / thermal benefit. Each partial stack is recalculated as an equivalent laminate equilibrium from Layer 1 upward; time-dependent bonding history is not modeled.</p>
+  </section>
+
+  <section class="card">
+    <h3>Selected placement · final stack comparison</h3>
+    <div class="v6SelectionBanner"><b id="v6DesignLabel">Modified die = current main AlN design</b><span id="v6LayerLabel">Layers: —</span></div>
+    <div class="metrics v6Metrics">
+      <div><span>Modified dies</span><b id="v6ModifiedCount">—</b></div>
+      <div><span>Modified fraction</span><b id="v6ModifiedFraction">—</b></div>
+      <div><span>Bow benefit capture</span><b id="v6BowCapture">—</b></div>
+      <div><span>Thermal benefit capture</span><b id="v6ThermalCapture">—</b></div>
+      <div><span>Replacement efficiency</span><b id="v6Efficiency">—</b></div>
+    </div>
+    <p class="note">Benefit capture = (All-baseline − Selective)/(All-baseline − All-modified). Values &gt;100% mean the selective placement outperforms the all-modified benchmark for that metric; negative values mean it is worse than baseline. If all-modified itself has no positive benefit, capture is reported as N/A.</p>
+    <div class="cards2">
+      <section class="v6CompareBox">
+        <h4>Final stack bow</h4>
+        <div class="v6Triad"><div><span>All baseline</span><b id="v6BowBase">—</b></div><div class="selected"><span>Selective</span><b id="v6BowSel">—</b></div><div><span>All modified</span><b id="v6BowAll">—</b></div></div>
+        <div class="rows compactRows"><div><span>Selective improvement vs baseline</span><b id="v6BowImprove">—</b></div><div><span>All-modified improvement vs baseline</span><b id="v6BowFullImprove">—</b></div><div><span>Selective κx / κy</span><b id="v6Kappa">—</b></div><div><span>X section</span><b id="v6XRelation">—</b></div><div><span>Y section</span><b id="v6YRelation">—</b></div></div>
+        <canvas id="v6FinalSectionCanvas" width="520" height="230"></canvas>
+      </section>
+      <section class="v6CompareBox">
+        <h4>Final operating thermal</h4>
+        <div class="v6Triad"><div><span>All baseline</span><b id="v6TBase">—</b></div><div class="selected"><span>Selective</span><b id="v6TSel">—</b></div><div><span>All modified</span><b id="v6TAll">—</b></div></div>
+        <div class="rows compactRows"><div><span>Selective improvement vs baseline</span><b id="v6TImprove">—</b></div><div><span>All-modified improvement vs baseline</span><b id="v6TFullImprove">—</b></div><div><span>Hottest layer</span><b id="v6HotLayer">—</b></div><div><span>Energy balance</span><b id="v6Energy">—</b></div><div><span>Total modeled power</span><b id="v6Power">—</b></div></div>
+        <canvas id="v6LayerTempCanvas" width="520" height="230"></canvas>
+      </section>
+    </div>
+    <canvas id="v6StackMaskCanvas" width="1080" height="300"></canvas>
+  </section>
+
+  <section class="card">
+    <h3>1→N cumulative stacking mechanics</h3>
+    <p class="note">At stage n, only Layers 1…n exist. The equilibrium bow is recomputed for All-baseline, current Selective mask truncated to n, and All-modified partial stacks.</p>
+    <div class="cards2">
+      <canvas id="v6CumulativeCanvas" width="540" height="300"></canvas>
+      <canvas id="v6IncrementCanvas" width="540" height="300"></canvas>
+    </div>
+    <div class="tableWrap"><table><thead id="v6HistoryHead"></thead><tbody id="v6HistoryBody"></tbody></table></div>
+  </section>
+
+  <div class="cards2">
+    <section class="card">
+      <h3>One-layer sensitivity · which layer matters most?</h3>
+      <canvas id="v6SensitivityCanvas" width="520" height="320"></canvas>
+      <div class="tableWrap"><table><thead id="v6SensitivityHead"></thead><tbody id="v6SensitivityBody"></tbody></table></div>
+    </section>
+    <section class="card">
+      <h3>Preset placement comparison</h3><p class="note">Mechanical bow is evaluated exactly with the reduced-order stack laminate. Thermal preset values are fast additive estimates from the exact one-layer sensitivity scan; verify any interesting preset with Run selected placement.</p>
+      <canvas id="v6PresetCanvas" width="520" height="320"></canvas>
+      <div class="tableWrap"><table><thead id="v6PresetHead"></thead><tbody id="v6PresetBody"></tbody></table></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <h3>Minimum-replacement deployment plan</h3>
+    <p class="note">Layers are prioritized from the one-layer sensitivity scan, then prefixes of that priority order are evaluated. This is an engineering screening heuristic, not proof of the global optimum over all 2ᴺ combinations.</p>
+    <div class="cards2">
+      <canvas id="v6PlanCanvas" width="540" height="320"></canvas>
+      <section>
+        <div class="rows"><div><span>Priority order</span><b id="v6PriorityOrder">—</b></div><div><span>50% target</span><b id="v6Target50">—</b></div><div><span>75% target</span><b id="v6Target75">—</b></div><div><span>90% target</span><b id="v6Target90">—</b></div></div>
+        <div class="tableWrap"><table><thead id="v6PlanHead"></thead><tbody id="v6PlanBody"></tbody></table></div>
+      </section>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Source / assumption boundary</h3>
+    <div class="sourceGrid">
+      <div><b>Literature/reference basis</b><p>pre-stack target stage; Rao surrogate front/back layer thickness; Bank 1.5 W + TSV zone 0.5 W; 45 °C ambient; Si/Cu/oxide thermal properties; all-TSV common-depth liner recess with 360° AlN collar nodes in the modified die.</p></div>
+      <div><b>User-measured / project proxy</b><p>base TSV 10×1.3 mm, PHY 8×2.6 mm, DA 8×1.9 mm; core central TSV region mapped from that base-die image.</p></div>
+      <div><b>DOE / surrogate assumptions</b><p>TSV occupancy, exact TSV shape/shift variants, AlN reinforcement geometry, AlN volume fraction, effective bond layer and package thermal resistance. Aggregate front/back residual-stress values are intentionally not used.</p></div>
+    </div>
+  </section>
+</section>
+</main>
+<script type="module" src="./src/app.js"></script>
+</body>
+</html>

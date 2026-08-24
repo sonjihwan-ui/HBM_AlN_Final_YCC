@@ -1,0 +1,8 @@
+{
+  "name": "HBM AlN Final 11.0 Integrated Design + Thermal Architecture",
+  "description": "Locked final reduced-order simulator for 2 µm / 4 µm AlN-reinforced HBM core-die design optimization and selective stack deployment.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
